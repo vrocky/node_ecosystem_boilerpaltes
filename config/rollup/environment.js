@@ -9,7 +9,7 @@ export function getEnvironmentSettings() {
   const isIsolationMode = process.env.ISOLATION_MODE === 'true';
 
   // Set different default ports for each mode to avoid conflicts
-  const basePort = process.env.PORT ? parseInt(process.env.PORT) : 3018;
+  const basePort = process.env.PORT ? parseInt(process.env.PORT) : 3023;
   const testPort = basePort + 1; // 3011 by default
   const visualTestPort = basePort + 2; // 3012 by default
   const isolationPort = basePort + 3; // 3013 by default

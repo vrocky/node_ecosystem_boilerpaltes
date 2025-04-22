@@ -9,27 +9,32 @@ import { projectRoot } from '../../rollup.config.js';
  * @returns {Object} Map of entry points
  */
 export function findEntryPoints(env) {
+  // Start with an empty entries object
   let entries = {};
   
-  // Find all test files
+  // Find all test files if in test mode
   const testFiles = (env.isTestMode || env.isVisualTestMode) ? globSync('src/**/*.test.{ts,tsx}') : [];
   
   // Find all page files (for MPA)
-  const pageFiles = !env.isTestMode && !env.isVisualTestMode && !env.isIsolationMode ? globSync('src/pages/**/index.{ts,tsx}') : [];
+  const pageFiles = globSync('src/pages/**/index.{ts,tsx}');
   
-  // Find all isolation files directly (more flexible approach)
+  // Find all isolation files if in isolation mode
   const isolationFiles = env.isIsolationMode ? globSync('src/**/*.isolation.tsx') : [];
   
   // Find all component files for isolation mode (fallback for auto-generation)
   const componentFiles = env.isIsolationMode ? globSync('src/components/**/*.tsx') : [];
   
-  if (env.isIsolationMode) {
-    entries = findIsolationEntries(isolationFiles, componentFiles);
-  } else if (!env.isTestMode && !env.isVisualTestMode) {
-    entries = findPageEntries(pageFiles);
-  }
+  // First, add any page files - these should always be included
+  entries = findPageEntries(pageFiles);
   
-  // Add test files as separate entries
+  // Next, add isolation entries if in isolation mode
+  if (env.isIsolationMode) {
+    // Merge the isolation entries with the already collected page entries
+    const isolationEntries = findIsolationEntries(isolationFiles, componentFiles);
+    entries = { ...entries, ...isolationEntries };
+  } 
+  
+  // Add test files as separate entries if in test mode
   if (env.isTestMode || env.isVisualTestMode) {
     entries = findTestEntries(testFiles);
   }
