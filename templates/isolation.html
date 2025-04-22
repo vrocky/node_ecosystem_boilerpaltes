@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Component Isolation</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      line-height: 1.5;
+      color: #333;
+    }
+    
+    .isolation-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #eaeaea;
+    }
+    
+    .isolation-header-content {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .isolation-header h1 {
+      margin: 0;
+      color: #333;
+      font-size: 1.8rem;
+    }
+    
+    .component-showcase {
+      padding: 2rem;
+      border: 1px dashed #ddd;
+      border-radius: 4px;
+      margin-bottom: 2rem;
+    }
+    
+    .back-link {
+      padding: 5px 10px;
+      color: #0070f3;
+      text-decoration: none;
+      border-radius: 4px;
+      margin-right: 10px;
+      background-color: rgba(0, 112, 243, 0.05);
+    }
+    
+    .back-link:hover {
+      background-color: rgba(0, 112, 243, 0.1);
+    }
+    
+    .component-path {
+      font-size: 0.9rem;
+      color: #666;
+      margin-top: 0.3rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="isolation-header">
+    <div class="isolation-header-content">
+      <h1>Component Isolation</h1>
+      <div class="component-path"></div>
+    </div>
+    <div>
+      <a href="/isolation/" class="back-link">All Components</a>
+      <a href="/" class="back-link">Main Site</a>
+    </div>
+  </div>
+  <div id="root"></div>
+  <script type="module" src="script-path-placeholder.js"></script>
+</body>
+</html>

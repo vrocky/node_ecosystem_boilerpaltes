@@ -1,0 +1,50 @@
+{
+  "name": "rollup-mpa-based-testing",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "cross-env NODE_ENV=development rollup -c -w",
+    "dev:port": "cross-env NODE_ENV=development PORT=$npm_config_port rollup -c -w",
+    "dev:windows": "set NODE_ENV=development && rollup -c -w",
+    "start": "npm run dev",
+    "dev:isolation": "cross-env NODE_ENV=development ISOLATION_MODE=true rollup -c -w",
+    "build:isolation": "cross-env ISOLATION_MODE=true rollup -c",
+    "preview:isolation": "cross-env ISOLATION_MODE=true npm run build && npx serve dist",
+    "test:mode": "cross-env NODE_ENV=development TEST_MODE=true rollup -c -w",
+    "visual:test": "cross-env NODE_ENV=development VISUAL_TEST_MODE=true rollup -c -w",
+    "create:isolation": "node scripts/create-component-isolation.js",
+    "create:page": "node scripts/create-page.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tslib": "^2.6.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-alias": "^5.0.1",
+    "@rollup/plugin-commonjs": "^28.0.3",
+    "@rollup/plugin-html": "^1.0.3",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-replace": "^6.0.2",
+    "@rollup/plugin-typescript": "^12.1.2",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "cross-env": "^7.0.3",
+    "glob": "^10.3.10",
+    "rollup": "^4.40.0",
+    "rollup-plugin-copy": "^3.5.0",
+    "rollup-plugin-livereload": "^2.0.5",
+    "rollup-plugin-scss": "^4.0.0",
+    "rollup-plugin-serve": "^3.0.0",
+    "sass": "^1.69.5",
+    "terser": "^5.24.0",
+    "typescript": "^5.8.3"
+  }
+}
+
