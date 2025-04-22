@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Component Isolation</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      line-height: 1.5;
+      color: #333;
+    }
+    
+    .isolation-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #eaeaea;
+    }
+    
+    .isolation-header-content {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .isolation-header h1 {
+      margin: 0;
+      color: #333;
+      font-size: 1.8rem;
+    }
+    
+    .component-showcase {
+      padding: 2rem;
+      border: 1px dashed #ddd;
+      border-radius: 4px;
+      margin-bottom: 2rem;
+    }
+    
+    .back-link {
+      padding: 5px 10px;
+      color: #0070f3;
+      text-decoration: none;
+      border-radius: 4px;
+      margin-right: 10px;
+      background-color: rgba(0, 112, 243, 0.05);
+    }
+    
+    .back-link:hover {
+      background-color: rgba(0, 112, 243, 0.1);
+    }
+    
+    .component-path {
+      font-size: 0.9rem;
+      color: #666;
+      margin-top: 0.3rem;
+    }
+    
+    .components-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .component-item {
+      padding: 15px;
+      border: 1px solid #eaeaea;
+      border-radius: 5px;
+      text-decoration: none;
+      color: #333;
+      display: block;
+      transition: all 0.2s ease;
+    }
+    
+    .component-item:hover {
+      border-color: #0070f3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="isolation-header">
+    <div class="isolation-header-content">
+      <h1>Component Isolation</h1>
+      <div class="component-path"></div>
+    </div>
+    <div>
+      <a href="/isolation/" class="back-link">All Components</a>
+      <a href="/" class="back-link">Main Site</a>
+    </div>
+  </div>
+  <div id="root"></div>
+  
+  <!-- For specific component isolation: -->
+  <script type="module" id="component-script"></script>
+  
+  <!-- For isolation index: -->
+  <div id="component-list" style="display:none;">
+    <!-- Component list will be inserted here by JavaScript -->
+  </div>
+  
+  <script type="module">
+    // Check if we're in the isolation index mode
+    if (window.location.pathname === '/isolation/' || window.location.pathname === '/isolation') {
+      // This is the isolation index page - hide the component mount and show the list
+      document.getElementById('root').style.display = 'none';
+      document.getElementById('component-list').style.display = 'block';
+      
+      // Try to load the list of available components
+      fetch('/api/isolation-components')
+        .then(response => response.json())
+        .catch(() => {
+          // If API call fails, try to find components directly
+          return Array.from(document.querySelectorAll('script[type="module"]'))
+            .filter(script => script.src && script.src.includes('isolation-'))
+            .map(script => {
+              const match = script.src.match(/isolation-([^.]+)/);
+              return match ? match[1] : null;
+            })
+            .filter(Boolean)
+            .map(name => ({ name }));
+        })
+        .then(components => {
+          if (!components || components.length === 0) {
+            // Fallback: look for Button component as an example
+            components = [{ name: 'button', path: '/src/components/Button/Button.isolation.tsx' }];
+          }
+          
+          // Generate the component list HTML
+          const componentListHtml = components.map(comp => `
+            <a href="/isolation/${comp.name}" class="component-item">
+              <h3>${comp.name.charAt(0).toUpperCase() + comp.name.slice(1)}</h3>
+              <div class="component-path">components/${comp.name}/</div>
+            </a>
+          `).join('');
+          
+          // Insert the HTML into the page
+          document.getElementById('component-list').innerHTML = `
+            <h2>Available Components</h2>
+            <div class="components-grid">
+              ${componentListHtml || '<p>No isolation components found.</p>'}
+            </div>
+          `;
+        });
+      
+      // Update the page title
+      document.title = 'Component Isolation Index';
+    }
+    else {
+      // This is a specific component isolation page
+      // Extract component name from URL
+      const componentName = window.location.pathname.split('/').pop();
+      
+      if (componentName) {
+        // Update title and header
+        document.title = `${componentName.charAt(0).toUpperCase() + componentName.slice(1)} | Component`;
+        document.querySelector('.isolation-header h1').textContent = 
+          `${componentName.charAt(0).toUpperCase() + componentName.slice(1)} Component`;
+        
+        // Set the component path info
+        document.querySelector('.component-path').textContent = `components/${componentName}/`;
+        
+        // Set up the script to load the component
+        const script = document.getElementById('component-script');
+        script.src = `/src/components/${componentName}/${componentName}.isolation.tsx`;
+      }
+    }
+  </script>
+</body>
+</html>

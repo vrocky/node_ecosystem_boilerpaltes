@@ -15,7 +15,15 @@
     "test:mode": "cross-env NODE_ENV=development TEST_MODE=true rollup -c -w",
     "visual:test": "cross-env NODE_ENV=development VISUAL_TEST_MODE=true rollup -c -w",
     "create:isolation": "node scripts/create-component-isolation.js",
-    "create:page": "node scripts/create-page.js"
+    "create:page": "node scripts/create-page.js",
+    
+    "vite:dev": "cross-env NODE_ENV=development vite",
+    "vite:build": "vite build",
+    "vite:preview": "vite preview",
+    "vite:dev:isolation": "cross-env NODE_ENV=development ISOLATION_MODE=true vite",
+    "vite:build:isolation": "cross-env ISOLATION_MODE=true vite build",
+    "vite:test:mode": "cross-env NODE_ENV=development TEST_MODE=true vite",
+    "vite:visual:test": "cross-env NODE_ENV=development VISUAL_TEST_MODE=true vite"
   },
   "keywords": [],
   "author": "",
@@ -35,6 +43,8 @@
     "@rollup/plugin-typescript": "^12.1.2",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.2.1",
+    "babel-plugin-transform-react-remove-prop-types": "^0.4.24",
     "cross-env": "^7.0.3",
     "glob": "^10.3.10",
     "rollup": "^4.40.0",
@@ -44,7 +54,8 @@
     "rollup-plugin-serve": "^3.0.0",
     "sass": "^1.69.5",
     "terser": "^5.24.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vite": "^5.1.4"
   }
 }
 
