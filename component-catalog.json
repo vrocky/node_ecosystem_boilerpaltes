@@ -1,0 +1,12 @@
+{
+  "components": [
+    {
+      "name": "src\\components\\button\\button",
+      "displayName": "Src\\components\\button\\button",
+      "htmlPath": "/src\\components\\Button\\button.isolation.vite.html",
+      "type": "html"
+    }
+  ],
+  "generatedAt": "2025-04-22T07:08:55.203Z",
+  "totalCount": 1
+}

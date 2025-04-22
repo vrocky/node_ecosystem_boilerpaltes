@@ -1,6 +1,10 @@
+// Force Vite to apply the JSX transform by using the comment below
+/** @jsxRuntime automatic */
+/** @jsxImportSource react */
 import React from 'react';
 import './Button.scss';
 
+// Simple Button props interface
 interface ButtonProps {
   text: string;
   variant?: 'primary' | 'secondary' | 'outline';
@@ -9,13 +13,14 @@ interface ButtonProps {
   disabled?: boolean;
 }
 
-const Button: React.FC<ButtonProps> = ({
+// Button component with default props
+const Button = ({
   text,
   variant = 'primary',
   size = 'medium',
   onClick,
   disabled = false
-}) => {
+}: ButtonProps) => {
   return (
     <button 
       className={`button button--${variant} button--${size}`}
