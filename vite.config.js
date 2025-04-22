@@ -147,11 +147,7 @@ function generateComponentCatalog() {
     
     console.log(`Generated catalog with ${catalog.totalCount} components`);
     
-    // Write to a JSON file directly in the root directory for development
-    const catalogPath = path.join(__dirname, 'component-catalog.json');
-    fs.writeFileSync(catalogPath, JSON.stringify(catalog, null, 2));
-    
-    // Also copy to public directory for production builds
+    // Only write to public directory (which becomes dist during build)
     const publicDir = path.join(__dirname, 'public');
     if (!fs.existsSync(publicDir)) {
       fs.mkdirSync(publicDir, { recursive: true });
@@ -207,9 +203,9 @@ const componentIsolationPlugin = {
     }
     
     server.middlewares.use((req, res, next) => {
-      // Directly serve component-catalog.json from root for simplicity during development
+      // Serve component-catalog.json from public directory
       if (req.url === '/component-catalog.json') {
-        const catalogPath = path.join(__dirname, 'component-catalog.json');
+        const catalogPath = path.join(__dirname, 'public', 'component-catalog.json');
         
         if (fs.existsSync(catalogPath)) {
           const json = fs.readFileSync(catalogPath, 'utf-8');
@@ -227,7 +223,7 @@ const componentIsolationPlugin = {
       
       // Serve isolation catalog for /isolation path
       if (req.url === '/isolation' || req.url === '/isolation/') {
-        const catalogPath = path.join(__dirname, 'isolation-catalog.html');
+        const catalogPath = path.join(__dirname,"templates", 'isolation-vite-catalog.html');
         
         if (fs.existsSync(catalogPath)) {
           const html = fs.readFileSync(catalogPath, 'utf-8');
