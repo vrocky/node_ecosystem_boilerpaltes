@@ -102,7 +102,7 @@ function createBasicHtmlTemplate() {
 </head>
 <body>
   <div id="root"></div>
-  <script type="module" src="bundle.js"></script>
+  <script type="module" src="assets/js/index.js"></script>
 </body>
 </html>`;
 }
