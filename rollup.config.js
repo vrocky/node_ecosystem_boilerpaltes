@@ -1,13 +1,8 @@
-import { fileURLToPath } from 'url';
 import path from 'path';
+import { projectRoot } from './config/rollup/paths.js';
 import { createPlugins } from './config/rollup/plugins.js';
 import { findEntryPoints } from './config/rollup/entries.js';
 import { getEnvironmentSettings } from './config/rollup/environment.js';
-
-// Handle paths in ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-export const projectRoot = __dirname;
 
 // Get environment settings
 const env = getEnvironmentSettings();

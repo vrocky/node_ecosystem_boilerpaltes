@@ -7,6 +7,12 @@ export function getEnvironmentSettings() {
   const isTestMode = process.env.TEST_MODE === 'true';
   const isVisualTestMode = process.env.VISUAL_TEST_MODE === 'true';
   const isIsolationMode = process.env.ISOLATION_MODE === 'true';
+  
+  // Explicit source map generation flag - enabled in development mode by default
+  // but can be overridden with an environment variable
+  const generateSourceMaps = process.env.GENERATE_SOURCEMAPS ? 
+    process.env.GENERATE_SOURCEMAPS === 'true' : 
+    isDevelopment;
 
   // Use provided port or calculate a port based on mode
   // Explicit PORT environment variable takes precedence
@@ -27,6 +33,7 @@ export function getEnvironmentSettings() {
     isTestMode,
     isVisualTestMode,
     isIsolationMode,
+    generateSourceMaps,
     port
   };
 }

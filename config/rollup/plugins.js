@@ -4,10 +4,11 @@ import typescript from '@rollup/plugin-typescript';
 import replace from '@rollup/plugin-replace';
 import alias from '@rollup/plugin-alias';
 import copy from 'rollup-plugin-copy';
+import postcss from 'rollup-plugin-postcss';
 import path from 'path';
 import fs from 'fs';
-import * as sass from 'sass';
-import { projectRoot } from '../../rollup.config.js';
+import autoprefixer from 'autoprefixer';
+import { projectRoot, resolveRoot } from './paths.js';
 import { 
   createCssPlugin, 
   createIsolationPlugin, 
@@ -54,10 +55,36 @@ export function createPlugins(entries, env) {
       inlineSources: env.isDevelopment,
     }),
     
-    // SCSS processing
-    createScssProcessor(env),
+    // Improved CSS/SCSS processing - use inline config only, no external file
+    postcss({
+      use: ['sass'],
+      extract: false, // Keep inline (we'll extract main files separately)
+      sourceMap: env.generateSourceMaps, // Use dedicated flag
+      minimize: !env.isDevelopment,
+      modules: {
+        generateScopedName: env.isDevelopment
+          ? '[name]__[local]___[hash:base64:5]'
+          : '[hash:base64:5]',
+      },
+      autoModules: true,
+      // Define PostCSS plugins inline to avoid config file issues
+      plugins: [
+        autoprefixer({ grid: true, flexbox: true }),
+        !env.isDevelopment && (() => {
+          // Using synchronous require for production only to avoid ESM issues
+          const cssnano = require('cssnano');
+          return cssnano({
+            preset: ['default', { discardComments: { removeAll: true } }]
+          });
+        })()
+      ].filter(Boolean),
+      // Skip loading config file
+      config: false,
+      // Add source map options
+      mapPath: (mapPath) => mapPath.replace(/\.map$/, '.map'),
+    }),
     
-    // CSS file generation (common for all modes)
+    // External CSS file generation
     createCssPlugin(entries, env),
     
     // Copy public files to dist
@@ -70,11 +97,15 @@ export function createPlugins(entries, env) {
   // Mode-specific plugins
   const modePlugins = [];
   
-  // Isolation mode
+  // Isolation mode - now also generate standard pages
   if (env.isIsolationMode) {
-    console.log('🔍 Running in ISOLATION mode');
+    console.log('🔍 Running in ISOLATION mode (with standard files)');
+    // Generate isolation pages
     modePlugins.push(createIsolationPlugin(entries, env));
-    modePlugins.push(createPagePlugin(entries, env)); // Page generation still needed in isolation mode
+    // Generate standard pages
+    modePlugins.push(createPagePlugin(entries, env));
+    // Also generate main site CSS
+    modePlugins.push(ensureMainSiteCssPlugin(env));
   } 
   // Test modes
   else if (env.isTestMode || env.isVisualTestMode) {
@@ -88,63 +119,9 @@ export function createPlugins(entries, env) {
     modePlugins.push(ensureMainSiteCssPlugin(env));
   }
   
-  // Add development server with proper MIME type handling (for all dev modes)
+  // Add development server with proper MIME type handling
   const serverPlugins = env.isDevelopment ? createDevServer(env) : [];
   
-  // Combine all plugins in the right order
+  // Combine all plugins
   return [...commonPlugins, ...modePlugins, ...serverPlugins];
-}
-
-/**
- * Create SCSS processor plugin
- * @param {Object} env - Environment settings
- * @returns {Object} SCSS processor plugin
- */
-function createScssProcessor(env) {
-  return {
-    name: 'scss-processor',
-    async transform(code, id) {
-      if (!id.endsWith('.scss')) return null;
-
-      try {
-        // Process SCSS file
-        const result = sass.compileString(code, {
-          style: env.isDevelopment ? 'expanded' : 'compressed',
-          sourceMap: env.isDevelopment,
-          sourceMapIncludeSources: true,
-          importers: [{
-            findFileUrl(url) {
-              if (!url.startsWith('~')) return null;
-              const resolvedPath = path.resolve(projectRoot, 'node_modules', url.substring(1));
-              return new URL(`file://${resolvedPath}`);
-            }
-          }],
-          syntax: 'scss',
-        });
-
-        // Return transformed CSS
-        return {
-          code: `
-            const style = document.createElement('style');
-            style.textContent = ${JSON.stringify(result.css)};
-            document.head.appendChild(style);
-            export default style;
-          `,
-          map: env.isDevelopment ? result.sourceMap : null
-        };
-      } catch (e) {
-        console.error(`Error processing SCSS file ${id}:`, e);
-        return null;
-      }
-    }
-  };
-}
-
-/**
- * Resolve paths relative to project root
- * @param {string} dir - Directory path
- * @returns {string} Absolute path
- */
-function resolveRoot(dir) {
-  return path.resolve(projectRoot, dir);
 }

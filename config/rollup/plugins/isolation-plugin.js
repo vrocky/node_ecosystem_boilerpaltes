@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import { projectRoot } from '../../../rollup.config.js';
+import { projectRoot } from '../paths.js';
 import { getRelativePath } from './utils.js';
 
 /**
@@ -129,6 +129,7 @@ export function createIsolationPlugin(entries, env) {
         if (components.length === 0) return;
         
         indexHtml += `
+
           <div class="component-group">
             <h2>${groupName === 'root' ? 'Root Components' : groupName.charAt(0).toUpperCase() + groupName.slice(1)}</h2>
             <div class="components-grid">

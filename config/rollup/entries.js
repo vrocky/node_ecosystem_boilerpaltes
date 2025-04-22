@@ -1,7 +1,7 @@
 import { globSync } from 'glob';
 import path from 'path';
 import fs from 'fs';
-import { projectRoot } from '../../rollup.config.js';
+import { projectRoot } from './paths.js';
 
 /**
  * Find entry points based on the environment
@@ -24,19 +24,24 @@ export function findEntryPoints(env) {
   // Find all component files for isolation mode (fallback for auto-generation)
   const componentFiles = env.isIsolationMode ? globSync('src/components/**/*.tsx') : [];
   
-  // First, add any page files - these should always be included
-  entries = findPageEntries(pageFiles);
-  
-  // Next, add isolation entries if in isolation mode
+  // In isolation mode, always build both regular pages and isolation files
   if (env.isIsolationMode) {
-    // Merge the isolation entries with the already collected page entries
+    // First, add standard page files
+    entries = findPageEntries(pageFiles);
+    
+    // Then add isolation entries
     const isolationEntries = findIsolationEntries(isolationFiles, componentFiles);
     entries = { ...entries, ...isolationEntries };
-  } 
-  
-  // Add test files as separate entries if in test mode
-  if (env.isTestMode || env.isVisualTestMode) {
+    
+    console.log(`Building ${Object.keys(entries).length} entries (${Object.keys(isolationEntries).length} isolation files, ${Object.keys(entries).length - Object.keys(isolationEntries).length} standard pages)`);
+  }
+  // Test modes - only build test files
+  else if (env.isTestMode || env.isVisualTestMode) {
     entries = findTestEntries(testFiles);
+  }
+  // Regular mode - only build standard pages
+  else {
+    entries = findPageEntries(pageFiles);
   }
   
   return entries;

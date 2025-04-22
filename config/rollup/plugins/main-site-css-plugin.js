@@ -1,7 +1,32 @@
 import path from 'path';
 import fs from 'fs';
 import * as sass from 'sass';
-import { projectRoot } from '../../../rollup.config.js';
+import postcss from 'postcss';
+import autoprefixer from 'autoprefixer';
+import { projectRoot } from '../paths.js';
+
+// Load PostCSS plugins directly to avoid CommonJS/ESM conflicts
+async function loadPostcssPlugins() {
+  const isDev = process.env.NODE_ENV === 'development';
+  
+  const plugins = [
+    // Always include autoprefixer
+    autoprefixer({ grid: true, flexbox: true })
+  ];
+
+  // Add cssnano in production mode
+  if (!isDev) {
+    const cssnano = (await import('cssnano')).default;
+    plugins.push(cssnano({
+      preset: ['default', {
+        discardComments: { removeAll: true },
+        normalizeWhitespace: false
+      }]
+    }));
+  }
+
+  return plugins;
+}
 
 /**
  * Plugin to ensure main site CSS is generated
@@ -9,14 +34,16 @@ import { projectRoot } from '../../../rollup.config.js';
  * @returns {Object} Main site CSS plugin or null if not applicable
  */
 export function ensureMainSiteCssPlugin(env) {
-  if (env.isTestMode || env.isVisualTestMode || env.isIsolationMode) return null;
+  // Always run this plugin, even in isolation mode
+  // Only skip for pure test modes
+  if (env.isTestMode || env.isVisualTestMode) return null;
   
   return {
     name: 'ensure-main-site-css',
-    writeBundle() {
+    async writeBundle() {
       try {
-        // Only process in normal (non-isolation, non-test) mode
         const appScssPath = path.resolve(projectRoot, 'src/App.scss');
+        
         if (fs.existsSync(appScssPath)) {
           // Create CSS directory if it doesn't exist
           const cssDir = path.join('dist', 'assets', 'css');
@@ -24,74 +51,69 @@ export function ensureMainSiteCssPlugin(env) {
             fs.mkdirSync(cssDir, { recursive: true });
           }
           
-          // Read SCSS content
-          const scssContent = fs.readFileSync(appScssPath, 'utf8');
-          
-          // Process App.scss separately for main site
           console.log('Generating CSS for main site from App.scss');
-          const result = sass.compileString(scssContent, {
+          
+          // Process App.scss for main site using the new API
+          const sassResult = sass.compile(appScssPath, {
             style: env.isDevelopment ? 'expanded' : 'compressed',
-            sourceMap: true, // Always generate source map in development
-            sourceMapIncludeSources: true,
-            syntax: 'scss',
+            sourceMap: env.generateSourceMaps, // Use the dedicated flag
+            sourceMapIncludeSources: true
           });
           
-          // Generate CSS content with sourcemap if needed
-          let cssContent = result.css;
+          // Define output CSS path
+          const cssPath = path.join('dist', 'assets', 'css', 'index.css');
           
-          // Always add the sourcemap URL in development mode
-          if (env.isDevelopment) {
-            if (!cssContent.includes('sourceMappingURL')) {
-              cssContent += '\n/*# sourceMappingURL=index.css.map */';
-            }
+          // Load PostCSS plugins and process the CSS
+          const plugins = await loadPostcssPlugins();
+          const result = await postcss(plugins).process(sassResult.css.toString(), {
+            from: appScssPath,
+            to: cssPath,
+            map: env.generateSourceMaps ? {
+              inline: false,
+              annotation: true,
+              sourcesContent: true
+            } : false
+          });
+          
+          // Ensure the sourcemap comment is included
+          let cssContent = result.css;
+          if (env.generateSourceMaps && !cssContent.includes('sourceMappingURL')) {
+            cssContent += '\n/*# sourceMappingURL=index.css.map */';
           }
           
-          // Write to index.css in assets/css directory
-          const cssPath = path.join('dist', 'assets', 'css', 'index.css');
+          // Write processed CSS
           fs.writeFileSync(cssPath, cssContent);
           console.log(`Generated main site CSS: ${cssPath}`);
           
-          // Create symbolic link from bundle.css to index.css to maintain backwards compatibility
-          // without duplicating the file (using fs.symlink is problematic on some systems)
+          // Create symbolic link from bundle.css for backward compatibility
           const bundleCssPath = path.join('dist', 'bundle.css');
-          
-          // Create a redirect file that imports the actual CSS
           const redirectContent = `@import "./assets/css/index.css";`;
           fs.writeFileSync(bundleCssPath, redirectContent);
           console.log(`Created bundle.css redirect to index.css for backwards compatibility`);
           
-          // Write source map with better error handling
-          if (env.isDevelopment) {
-            try {
-              console.log('Generating source map for index.css...');
+          // Write source map with extra validation
+          if (env.generateSourceMaps) {
+            if (result.map) {
+              const mapPath = `${cssPath}.map`;
+              fs.writeFileSync(mapPath, result.map.toString());
               
-              // Create the source map object
-              const mapContent = JSON.stringify({
-                version: 3,
-                file: 'index.css',
-                sources: ['App.scss'],
-                sourcesContent: [scssContent],
-                names: [],
-                mappings: result.sourceMap ? result.sourceMap.mappings : '',
-                sourceRoot: ''
-              }, null, 2); // Pretty print for debugging
-              
-              // Path for the map file
-              const mapPath = path.join('dist', 'assets', 'css', 'index.css.map');
-              
-              // Write source map file
-              fs.writeFileSync(mapPath, mapContent);
-              console.log(`✓ Generated main site CSS source map: ${mapPath}`);
-              
-              // Verify the map file was created
+              // Validate that map file was created
               if (fs.existsSync(mapPath)) {
                 const mapSize = fs.statSync(mapPath).size;
-                console.log(`  Source map size: ${mapSize} bytes`);
+                console.log(`✓ Generated main site CSS source map: ${mapPath} (${mapSize} bytes)`);
+                
+                // Double check that the CSS has the comment
+                const writtenCss = fs.readFileSync(cssPath, 'utf8');
+                if (!writtenCss.includes('sourceMappingURL')) {
+                  // Fix it if missing
+                  fs.writeFileSync(cssPath, writtenCss + '\n/*# sourceMappingURL=index.css.map */');
+                  console.log(`  Fixed: Added missing sourcemap comment to index.css`);
+                }
               } else {
                 console.error(`✗ Failed to create source map file: ${mapPath}`);
               }
-            } catch (mapError) {
-              console.error('Error generating CSS source map:', mapError);
+            } else {
+              console.warn('No source map generated by PostCSS');
             }
           }
         } else {
