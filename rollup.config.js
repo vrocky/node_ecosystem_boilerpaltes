@@ -1,8 +1,8 @@
 import { fileURLToPath } from 'url';
 import path from 'path';
-import { createPlugins } from './config/plugins.js';
-import { findEntryPoints } from './config/entries.js';
-import { getEnvironmentSettings } from './config/environment.js';
+import { createPlugins } from './config/rollup/plugins.js';
+import { findEntryPoints } from './config/rollup/entries.js';
+import { getEnvironmentSettings } from './config/rollup/environment.js';
 
 // Handle paths in ESM
 const __filename = fileURLToPath(import.meta.url);

@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import { projectRoot } from '../../rollup.config.js';
+import { projectRoot } from '../../../rollup.config.js';
 import { getRelativePath } from './utils.js';
 
 /**
@@ -228,7 +228,7 @@ function createIsolationTemplate() {
     <h1>Component Isolation</h1>
     <div>
       <a href="/isolation/" class="back-link">All Components</a>
-      <a href="/" class="back-link">Main Site</a>
+      <a href="/public" class="back-link">Main Site</a>
     </div>
   </div>
   <div id="root"></div>
@@ -316,7 +316,7 @@ function createIsolationIndexTemplate() {
     </style>
   </head>
   <body>
-    <a href="/" class="back-link">← Back to main site</a>
+    <a href="/public" class="back-link">← Back to main site</a>
     <h1>Component Isolation Index</h1>
     <div class="components-list">`;
 }

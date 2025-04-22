@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import * as sass from 'sass';
-import { projectRoot } from '../../rollup.config.js';
+import { projectRoot } from '../../../rollup.config.js';
 
 /**
  * Plugin for CSS file generation

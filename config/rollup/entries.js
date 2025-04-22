@@ -1,7 +1,7 @@
 import { globSync } from 'glob';
 import path from 'path';
 import fs from 'fs';
-import { projectRoot } from '../rollup.config.js';
+import { projectRoot } from '../../rollup.config.js';
 
 /**
  * Find entry points based on the environment
