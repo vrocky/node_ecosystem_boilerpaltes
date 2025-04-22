@@ -8,13 +8,15 @@
     "rollup:build": "rollup -c",
     "rollup:build:dev": "cross-env NODE_ENV=development ISOLATION_MODE=true rollup -c",
     "rollup:dev": "cross-env NODE_ENV=development ISOLATION_MODE=true rollup -c -w",
+    "rollup:dev:port": "cross-env NODE_ENV=development ISOLATION_MODE=true PORT=3333 rollup -c -w",
     
     "// 2. Vite Commands": "",
     "vite:dev": "cross-env NODE_ENV=development vite",
     "vite:build": "vite build",
     "vite:preview": "vite preview",
     "vite:isolation": "cross-env ISOLATION_MODE=true NODE_ENV=development vite",
-    "vite:isolation-catalog": "cross-env ISOLATION_MODE=true NODE_ENV=development vite --open /isolation"
+    "vite:isolation-catalog": "cross-env ISOLATION_MODE=true NODE_ENV=development vite --open /isolation",
+    "vite:dev:port": "cross-env NODE_ENV=development PORT=3333 vite"
   },
   "keywords": [],
   "author": "",

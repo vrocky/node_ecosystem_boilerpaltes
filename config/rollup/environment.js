@@ -8,16 +8,19 @@ export function getEnvironmentSettings() {
   const isVisualTestMode = process.env.VISUAL_TEST_MODE === 'true';
   const isIsolationMode = process.env.ISOLATION_MODE === 'true';
 
-  // Set different default ports for each mode to avoid conflicts
-  const basePort = process.env.PORT ? parseInt(process.env.PORT) : 3023;
-  const testPort = basePort + 1; // 3011 by default
-  const visualTestPort = basePort + 2; // 3012 by default
-  const isolationPort = basePort + 3; // 3013 by default
-
-  // Pick the appropriate port based on the mode
-  const port = isIsolationMode ? isolationPort : 
-              isVisualTestMode ? visualTestPort : 
-              isTestMode ? testPort : basePort;
+  // Use provided port or calculate a port based on mode
+  // Explicit PORT environment variable takes precedence
+  let port;
+  if (process.env.PORT) {
+    port = parseInt(process.env.PORT);
+  } else {
+    // Each mode gets a different default port to avoid conflicts
+    const basePort = 3000;
+    port = isIsolationMode ? basePort + 23 : // 3023
+           isVisualTestMode ? basePort + 24 : // 3024 
+           isTestMode ? basePort + 25 : // 3025
+           basePort; // 3000 for standard mode
+  }
 
   return {
     isDevelopment,
