@@ -29,65 +29,109 @@ const MIME_TYPES = {
 const DEFAULT_MIME = 'text/plain';
 
 /**
- * Check if a port is available
+ * Improved port availability check using async/await
  * @param {number} port - Port to check
  * @returns {Promise<boolean>} True if available, false if in use
  */
-function isPortAvailable(port) {
+async function isPortAvailable(port) {
   return new Promise((resolve) => {
-    const server = net.createServer();
-    
-    server.once('error', (err) => {
-      if (err.code === 'EADDRINUSE') {
+    const tester = net.createServer()
+      .once('error', err => {
+        tester.removeAllListeners();
         resolve(false);
-      } else {
-        // For other errors, assume the port is available
-        resolve(true);
+      })
+      .once('listening', () => {
+        tester.close(() => resolve(true));
+      })
+      .listen(port, '127.0.0.1');
+      
+    // Add timeout to prevent hanging
+    setTimeout(() => {
+      try {
+        tester.removeAllListeners();
+        tester.close(() => resolve(false));
+      } catch (e) {
+        // Ignore errors during cleanup
+        resolve(false);
       }
-    });
-    
-    server.once('listening', () => {
-      // Port is available, close the server
-      server.close(() => {
-        resolve(true);
-      });
-    });
-    
-    server.listen(port, '127.0.0.1');
+    }, 1000);
   });
 }
 
 /**
- * Find an available port starting from basePort
+ * Enhanced function to find an available port with better retry logic
  * @param {number} basePort - Starting port number
  * @param {number} maxAttempts - Maximum number of attempts
  * @returns {Promise<number>} Available port number
  */
-async function findAvailablePort(basePort, maxAttempts = 10) {
+async function findAvailablePort(basePort, maxAttempts = 20) {
+  console.log(`Looking for available port starting from ${basePort}...`);
+  
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const port = basePort + attempt;
-    const available = await isPortAvailable(port);
     
-    if (available) {
-      return port;
+    try {
+      const available = await isPortAvailable(port);
+      
+      if (available) {
+        if (attempt > 0) {
+          console.log(`Port ${basePort} was in use, using port ${port} instead.`);
+        } else {
+          console.log(`Port ${port} is available.`);
+        }
+        return port;
+      }
+      
+      if (attempt === 0) {
+        console.log(`Port ${port} is already in use, trying alternative ports...`);
+      }
+    } catch (err) {
+      console.error(`Error checking port ${port}:`, err.message);
+      // Continue to next port on error
     }
-    
-    console.log(`Port ${port} is in use, trying next port...`);
   }
   
-  // If all attempts fail, return a fallback port
-  const fallbackPort = basePort + maxAttempts + Math.floor(Math.random() * 1000);
-  console.warn(`Could not find an available port after ${maxAttempts} attempts. Using port ${fallbackPort}`);
+  // If all attempts fail, use a random port in a higher range
+  const fallbackPort = basePort + 1000 + Math.floor(Math.random() * 1000);
+  console.log(`Could not find an available port after ${maxAttempts} attempts. Using random port ${fallbackPort}`);
   return fallbackPort;
 }
 
 /**
- * Track active servers to ensure proper cleanup
+ * Robust server tracking registry for proper cleanup
  */
-const activeServers = new Set();
+const serverRegistry = {
+  servers: new Map(),
+  
+  register(id, server) {
+    this.servers.set(id, server);
+  },
+  
+  unregister(id) {
+    this.servers.delete(id);
+  },
+  
+  closeAll() {
+    console.log(`Cleaning up ${this.servers.size} active servers...`);
+    for (const [id, server] of this.servers.entries()) {
+      try {
+        console.log(`Closing server: ${id}`);
+        server.close();
+      } catch (err) {
+        console.error(`Error closing server ${id}:`, err.message);
+      }
+      this.servers.delete(id);
+    }
+  }
+};
+
+// Set up global cleanup
+process.on('SIGINT', () => serverRegistry.closeAll());
+process.on('SIGTERM', () => serverRegistry.closeAll());
+process.on('exit', () => serverRegistry.closeAll());
 
 /**
- * Creates a custom server plugin
+ * Creates a custom server plugin with enhanced port handling
  * @param {Object} options - Server options
  * @returns {Object} Rollup plugin
  */
@@ -102,6 +146,7 @@ function createCustomServer(options = {}) {
 
   let server = null;
   let actualPort = port;
+  const serverId = `server-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
   return {
     name: 'custom-serve',
@@ -113,15 +158,12 @@ function createCustomServer(options = {}) {
       }
       
       try {
-        // Find an available port
+        // Find an available port with improved algorithm
         actualPort = await findAvailablePort(port);
         
         // Create HTTP server
         server = http.createServer((req, res) => {
           // Server request handling logic
-          // ...existing code...
-          
-          // Handle direct file path lookups first
           let url = req.url.split('?')[0];
           url = decodeURIComponent(url);
           
@@ -174,13 +216,44 @@ function createCustomServer(options = {}) {
               return;
             }
             
-            // Additional file lookup logic
-            // ...rest of the existing request handling logic...
+            // Check for index.html in directories
+            if (!err && stats.isDirectory()) {
+              const indexPath = path.join(filePath, 'index.html');
+              fs.stat(indexPath, (indexErr, indexStats) => {
+                if (!indexErr && indexStats.isFile()) {
+                  serveFile(indexPath, res);
+                  return;
+                }
+                
+                // Directory without index.html
+                res.writeHead(404, { 'Content-Type': 'text/html' });
+                res.end(`<h1>Directory listing not supported</h1><p>No index.html in ${url}</p>`);
+              });
+              return;
+            }
+            
+            // Handle History API fallback for SPA
+            if (historyApiFallback && req.method === 'GET') {
+              const indexPath = path.join(process.cwd(), contentBase, 'index.html');
+              fs.stat(indexPath, (indexErr, indexStats) => {
+                if (!indexErr && indexStats.isFile()) {
+                  // Serve index.html for SPA routes
+                  serveFile(indexPath, res);
+                  return;
+                }
+                
+                // No index.html exists
+                res.writeHead(404, { 'Content-Type': 'text/html' });
+                res.end(`<h1>404 Not Found</h1><p>The requested URL ${url} was not found.</p>`);
+              });
+              return;
+            }
+            
+            // Not found
+            res.writeHead(404, { 'Content-Type': 'text/html' });
+            res.end(`<h1>404 Not Found</h1><p>The requested URL ${url} was not found.</p>`);
           });
         });
-        
-        // Track this server for cleanup
-        activeServers.add(server);
         
         // Function to serve a file
         function serveFile(filePath, res) {
@@ -206,7 +279,7 @@ function createCustomServer(options = {}) {
           fs.readFile(filePath, (err, data) => {
             if (err) {
               res.writeHead(500, { 'Content-Type': 'text/html' });
-              res.end(`500 Server Error: ${err.message}`);
+              res.end(`<h1>500 Server Error</h1><p>${err.message}</p>`);
               return;
             }
             
@@ -215,44 +288,88 @@ function createCustomServer(options = {}) {
           });
         }
         
-        // Handle server errors
+        // Register this server for clean shutdown
+        serverRegistry.register(serverId, server);
+        
+        // Start the server with proper error handling
         server.on('error', (err) => {
           console.error('Server error:', err);
-          if (err.code === 'EADDRINUSE') {
-            console.error(`Port ${actualPort} is already in use. Please try another port.`);
-          }
-        });
-        
-        // Start the server with error handling
-        server.listen(actualPort, host, () => {
-          console.log(`Server running at http://${host}:${actualPort}`);
           
-          // Open browser if required
-          if (openBrowser && process.env.NODE_ENV !== 'test') {
-            const openCommand = process.platform === 'win32' ? 'start' : 
-                              process.platform === 'darwin' ? 'open' : 'xdg-open';
-            const url = `http://${host}:${actualPort}`;
-            try {
-              const { exec } = child_process;
-              exec(`${openCommand} ${url}`);
-            } catch (err) {
-              console.error('Failed to open browser:', err);
-            }
+          // Report port conflict clearly
+          if (err.code === 'EADDRINUSE') {
+            console.error(`Port ${actualPort} is already in use. Trying another port...`);
+            
+            // Cleanup this server attempt
+            serverRegistry.unregister(serverId);
+            server = null;
+            
+            // Retry with a different port in the next tick
+            process.nextTick(async () => {
+              try {
+                // Find another port with a higher offset
+                const newPort = await findAvailablePort(actualPort + 1);
+                actualPort = newPort;
+                
+                // Update this in the closure for any future references
+                this.buildStart();
+              } catch (retryErr) {
+                console.error('Failed to start server on alternate port:', retryErr);
+              }
+            });
           }
         });
         
-        // Set up cleanup handlers
-        process.on('SIGINT', () => closeServer());
-        process.on('SIGTERM', () => closeServer());
-        process.on('exit', () => closeServer());
+        // Listen with a timeout to detect issues
+        const serverPromise = new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error(`Server startup timed out after 5 seconds on port ${actualPort}`));
+          }, 5000);
+          
+          server.listen(actualPort, host, () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+        });
+        
+        await serverPromise;
+        console.log(`Server running at http://${host}:${actualPort}`);
+        
+        // Open browser if required
+        if (openBrowser && process.env.NODE_ENV !== 'test') {
+          const openCommand = process.platform === 'win32' ? 'start' : 
+                            process.platform === 'darwin' ? 'open' : 'xdg-open';
+          const url = `http://${host}:${actualPort}`;
+          try {
+            const { exec } = child_process;
+            exec(`${openCommand} ${url}`);
+          } catch (err) {
+            console.error('Failed to open browser:', err);
+          }
+        }
         
       } catch (error) {
         console.error('Error starting server:', error);
+        
+        // Clean up on error
+        if (server) {
+          serverRegistry.unregister(serverId);
+          server = null;
+        }
       }
     },
     
     buildEnd() {
       // Keep server running for watch mode
+    },
+    
+    generateBundle() {
+      // Verify server is still running as expected
+      if (server && !server.listening) {
+        console.log('Server appears to have stopped. Attempting restart...');
+        serverRegistry.unregister(serverId);
+        server = null;
+        this.buildStart();
+      }
     },
     
     closeWatcher() {
@@ -271,38 +388,11 @@ function createCustomServer(options = {}) {
     if (server) {
       console.log(`Closing server on port ${actualPort}`);
       server.close();
-      activeServers.delete(server);
+      serverRegistry.unregister(serverId);
       server = null;
     }
   }
 }
-
-/**
- * Ensure all servers are properly closed on process exit
- */
-function setupCleanupHandlers() {
-  const cleanup = () => {
-    if (activeServers.size > 0) {
-      console.log(`Closing ${activeServers.size} active servers...`);
-      for (const server of activeServers) {
-        try {
-          server.close();
-        } catch (e) {
-          // Ignore errors during cleanup
-        }
-      }
-      activeServers.clear();
-    }
-  };
-  
-  // Set up cleanup handlers
-  process.on('SIGINT', cleanup);
-  process.on('SIGTERM', cleanup);
-  process.on('exit', cleanup);
-}
-
-// Set up cleanup handlers when this module is loaded
-setupCleanupHandlers();
 
 /**
  * Creates development server plugins

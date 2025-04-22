@@ -24,23 +24,30 @@ import {
  * @returns {Array} Array of plugins
  */
 export function createPlugins(entries, env) {
-  const plugins = [
-    // Basic plugins
+  // Common plugins for all modes
+  const commonPlugins = [
+    // Environment variables
     replace({
       'process.env.NODE_ENV': JSON.stringify(env.isDevelopment ? 'development' : 'production'),
       preventAssignment: true
     }),
+    
+    // Path aliases
     alias({
       entries: [
         { find: '@', replacement: resolveRoot('src') },
         { find: '@components', replacement: resolveRoot('src/components') }
       ]
     }),
+    
+    // Module resolution
     resolve({
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.scss', '.css', '.json'],
       browser: true,
     }),
     commonjs(),
+    
+    // TypeScript handling
     typescript({
       tsconfig: './tsconfig.json',
       sourceMap: env.isDevelopment,
@@ -50,39 +57,42 @@ export function createPlugins(entries, env) {
     // SCSS processing
     createScssProcessor(env),
     
-    // CSS file generation
+    // CSS file generation (common for all modes)
     createCssPlugin(entries, env),
     
-    // Main site CSS generation
-    ensureMainSiteCssPlugin(env),
+    // Copy public files to dist
+    copy({
+      targets: [{ src: 'public/**/*', dest: 'dist/' }],
+      copyOnce: true
+    }),
   ];
   
   // Mode-specific plugins
+  const modePlugins = [];
+  
+  // Isolation mode
   if (env.isIsolationMode) {
-    plugins.push(createIsolationPlugin(entries, env));
-  } else if (!env.isTestMode && !env.isVisualTestMode) {
-    plugins.push(createPagePlugin(entries, env));
+    console.log('🔍 Running in ISOLATION mode');
+    modePlugins.push(createIsolationPlugin(entries, env));
+    modePlugins.push(createPagePlugin(entries, env)); // Page generation still needed in isolation mode
+  } 
+  // Test modes
+  else if (env.isTestMode || env.isVisualTestMode) {
+    console.log(`🧪 Running in ${env.isVisualTestMode ? 'VISUAL TEST' : 'TEST'} mode`);
+    modePlugins.push(createTestPlugin(entries, env));
+  } 
+  // Regular mode
+  else {
+    console.log(`🚀 Running in ${env.isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'} mode`);
+    modePlugins.push(createPagePlugin(entries, env));
+    modePlugins.push(ensureMainSiteCssPlugin(env));
   }
   
-  // Test mode plugins
-  if (env.isTestMode || env.isVisualTestMode) {
-    plugins.push(createTestPlugin(entries, env));
-  }
+  // Add development server with proper MIME type handling (for all dev modes)
+  const serverPlugins = env.isDevelopment ? createDevServer(env) : [];
   
-  // Copy public directory to dist
-  plugins.push(
-    copy({
-      targets: [
-        { src: 'public/**/*', dest: 'dist/' }
-      ],
-      copyOnce: true
-    })
-  );
-  
-  // Add development server with proper MIME type handling
-  plugins.push(...createDevServer(env));
-  
-  return plugins;
+  // Combine all plugins in the right order
+  return [...commonPlugins, ...modePlugins, ...serverPlugins];
 }
 
 /**
