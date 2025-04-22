@@ -39,7 +39,7 @@ export function createCssPlugin(entries, env) {
             // Process SCSS with proper source map
             const result = sass.compileString(scssContent, {
               style: env.isDevelopment ? 'expanded' : 'compressed',
-              sourceMap: env.isDevelopment,
+              sourceMap: env.isDevelopment, // Always generate in dev mode
               sourceMapIncludeSources: true,
               sourceMapRoot: path.relative(cssOutputDir, entryDir),
               url: new URL(`file://${scssPath}`),
@@ -52,7 +52,10 @@ export function createCssPlugin(entries, env) {
             // Add sourceMappingURL comment if in dev mode
             let cssContent = result.css;
             if (env.isDevelopment) {
-              cssContent += `\n/*# sourceMappingURL=${entryName}.css.map */`;
+              // Ensure the sourceMappingURL comment exists
+              if (!cssContent.includes('sourceMappingURL')) {
+                cssContent += `\n/*# sourceMappingURL=${entryName}.css.map */`;
+              }
             }
             
             fs.writeFileSync(cssPath, cssContent);
@@ -60,25 +63,26 @@ export function createCssPlugin(entries, env) {
             
             // Write source map with proper content
             if (env.isDevelopment) {
-              const sourceMapPath = path.join(cssOutputDir, `${entryName}.css.map`);
-              
-              // Create a more complete source map for better debugging
-              const sourceMap = {
-                version: 3,
-                file: `${entryName}.css`,
-                sources: [`${componentName}.scss`],
-                sourcesContent: [scssContent],
-                names: [],
-                mappings: result.sourceMap ? result.sourceMap.mappings : '',
-                sourceRoot: ''
-              };
-              
-              fs.writeFileSync(sourceMapPath, JSON.stringify(sourceMap));
-              console.log(`Generated source map: ${sourceMapPath}`);
+              try {
+                const sourceMapPath = path.join(cssOutputDir, `${entryName}.css.map`);
+                
+                // Create a more complete source map for better debugging
+                const sourceMap = {
+                  version: 3,
+                  file: `${entryName}.css`,
+                  sources: [`${componentName}.scss`],
+                  sourcesContent: [scssContent],
+                  names: [],
+                  mappings: result.sourceMap ? result.sourceMap.mappings : '',
+                  sourceRoot: ''
+                };
+                
+                fs.writeFileSync(sourceMapPath, JSON.stringify(sourceMap, null, 2));
+                console.log(`Generated source map: ${sourceMapPath}`);
+              } catch (mapError) {
+                console.error(`Error generating source map for ${entryName}.css:`, mapError);
+              }
             }
-            
-            // Remove the fallback bundle.css file creation
-            // The main-site-css-plugin now handles this more efficiently
           }
           
           // Also look for any page or component specific CSS in the same directory
@@ -100,7 +104,9 @@ export function createCssPlugin(entries, env) {
             let cssContent = result.css;
             
             if (env.isDevelopment) {
-              cssContent += `\n/*# sourceMappingURL=${entryName}-specific.css.map */`;
+              if (!cssContent.includes('sourceMappingURL')) {
+                cssContent += `\n/*# sourceMappingURL=${entryName}-specific.css.map */`;
+              }
             }
             
             fs.writeFileSync(specificCssPath, cssContent);
@@ -108,17 +114,22 @@ export function createCssPlugin(entries, env) {
             
             // Write source map
             if (env.isDevelopment) {
-              const sourceMapPath = path.join(cssOutputDir, `${entryName}-specific.css.map`);
-              const sourceMap = {
-                version: 3,
-                file: `${entryName}-specific.css`,
-                sources: [`${entryBasename}.scss`],
-                sourcesContent: [scssContent],
-                names: [],
-                mappings: result.sourceMap ? result.sourceMap.mappings : '',
-                sourceRoot: ''
-              };
-              fs.writeFileSync(sourceMapPath, JSON.stringify(sourceMap));
+              try {
+                const sourceMapPath = path.join(cssOutputDir, `${entryName}-specific.css.map`);
+                const sourceMap = {
+                  version: 3,
+                  file: `${entryName}-specific.css`,
+                  sources: [`${entryBasename}.scss`],
+                  sourcesContent: [scssContent],
+                  names: [],
+                  mappings: result.sourceMap ? result.sourceMap.mappings : '',
+                  sourceRoot: ''
+                };
+                fs.writeFileSync(sourceMapPath, JSON.stringify(sourceMap, null, 2));
+                console.log(`Generated specific source map: ${sourceMapPath}`);
+              } catch (mapError) {
+                console.error(`Error generating source map for ${entryName}-specific.css:`, mapError);
+              }
             }
           }
         } catch (error) {
@@ -126,30 +137,21 @@ export function createCssPlugin(entries, env) {
         }
       }
       
-      // Also clean up the output.css file if it exists (generated by rollup-plugin-scss)
-      const outputCssPath = path.join(cssOutputDir, 'output.css');
-      if (fs.existsSync(outputCssPath)) {
-        console.log('Converting output.css to proper source mapped files...');
-        
-        // Read the content
-        const outputCss = fs.readFileSync(outputCssPath, 'utf8');
-        
-        // Create a map file for it too
-        if (env.isDevelopment) {
-          const outputMapPath = path.join(cssOutputDir, 'output.css.map');
-          const outputMap = {
-            version: 3,
-            file: 'output.css',
-            sources: ['combined.scss'],
-            names: [],
-            mappings: '',
-            sourceRoot: ''
-          };
+      // Also make sure we handle the index.css mapping
+      const indexCssPath = path.join(cssOutputDir, 'index.css');
+      if (fs.existsSync(indexCssPath) && env.isDevelopment) {
+        try {
+          // Read the content to check if it has sourcemap
+          let indexCss = fs.readFileSync(indexCssPath, 'utf8');
           
-          fs.writeFileSync(outputMapPath, JSON.stringify(outputMap));
-          
-          // Update the CSS file to reference the map
-          fs.writeFileSync(outputCssPath, outputCss + '\n/*# sourceMappingURL=output.css.map */');
+          // Add sourcemap comment if missing
+          if (!indexCss.includes('sourceMappingURL')) {
+            indexCss += '\n/*# sourceMappingURL=index.css.map */';
+            fs.writeFileSync(indexCssPath, indexCss);
+            console.log('Added sourcemap reference to index.css');
+          }
+        } catch (err) {
+          console.error('Error updating index.css sourcemap reference:', err);
         }
       }
     }
