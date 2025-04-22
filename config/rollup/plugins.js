@@ -2,8 +2,6 @@ import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import typescript from '@rollup/plugin-typescript';
 import replace from '@rollup/plugin-replace';
-import serve from 'rollup-plugin-serve';
-import livereload from 'rollup-plugin-livereload';
 import alias from '@rollup/plugin-alias';
 import copy from 'rollup-plugin-copy';
 import path from 'path';
@@ -15,7 +13,8 @@ import {
   createIsolationPlugin, 
   createPagePlugin,
   createTestPlugin,
-  ensureMainSiteCssPlugin 
+  ensureMainSiteCssPlugin,
+  createDevServer
 } from './plugins/index.js';
 
 /**
@@ -80,26 +79,8 @@ export function createPlugins(entries, env) {
     })
   );
   
-  // Development server and hot reload
-  if (env.isDevelopment) {
-    console.log(`Starting development server on port: ${env.port}`);
-    plugins.push(
-      serve({
-        open: true,
-        contentBase: ['dist'],
-        port: env.port,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-        },
-        historyApiFallback: true,
-      }),
-      livereload({
-        watch: 'dist',
-        verbose: false,
-        delay: 300,
-      })
-    );
-  }
+  // Add development server with proper MIME type handling
+  plugins.push(...createDevServer(env));
   
   return plugins;
 }

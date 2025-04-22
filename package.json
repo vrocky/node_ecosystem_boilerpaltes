@@ -4,29 +4,12 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "// 1. Rollup Build Commands": "",
-    "start": "npm run rollup:dev",
-    "build": "rollup -c",
-    "preview": "npx serve dist",
-
-    "// 2. Rollup Development": "",
-    "rollup:dev": "cross-env NODE_ENV=development rollup -c -w",
-    "rollup:dev:port": "cross-env NODE_ENV=development PORT=$npm_config_port rollup -c -w",
-
-    "// 3. Component Isolation Mode": "",
-    "isolation": "cross-env NODE_ENV=development ISOLATION_MODE=true rollup -c -w",
-    "isolation:build": "cross-env ISOLATION_MODE=true rollup -c",
-    "isolation:preview": "npm run isolation:build && npx serve dist",
-
-    "// 4. Testing Modes": "",
-    "test:component": "cross-env NODE_ENV=development TEST_MODE=true rollup -c -w",
-    "visual:test": "cross-env NODE_ENV=development VISUAL_TEST_MODE=true rollup -c -w",
-
-    "// 5. Component and Page Generators": "",
-    "create:component": "node scripts/create-component-isolation.js",
-    "create:page": "node scripts/create-page.js",
+    "// 1. Rollup Commands": "",
+    "rollup:build": "rollup -c",
+    "rollup:build:dev": "cross-env NODE_ENV=development ISOLATION_MODE=true rollup -c",
+    "rollup:dev": "cross-env NODE_ENV=development ISOLATION_MODE=true rollup -c -w",
     
-    "// 6. Vite Commands": "",
+    "// 2. Vite Commands": "",
     "vite:dev": "cross-env NODE_ENV=development vite",
     "vite:build": "vite build",
     "vite:preview": "vite preview",

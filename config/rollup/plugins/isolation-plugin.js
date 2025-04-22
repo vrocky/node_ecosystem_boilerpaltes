@@ -80,7 +80,7 @@ export function createIsolationPlugin(entries, env) {
         let componentHtml = templateHtml
           // Update page title
           .replace(/<title>.*?<\/title>/, `<title>${componentName} | Component</title>`)
-          // Update script src - Ensure script has type="module"
+          // Fix for MIME type issue - ensure the script is properly configured as module
           .replace(/<script.*?src=".*?"><\/script>/, `<script type="module" src="${jsPath}"></script>`)
           // Update favicon path
           .replace(/href="favicon.png"/, `href="${faviconPath}"`)
@@ -228,10 +228,11 @@ function createIsolationTemplate() {
     <h1>Component Isolation</h1>
     <div>
       <a href="/isolation/" class="back-link">All Components</a>
-      <a href="/public" class="back-link">Main Site</a>
+      <a href="/" class="back-link">Main Site</a>
     </div>
   </div>
   <div id="root"></div>
+  <!-- Fixed script tag to ensure proper module loading -->
   <script type="module" src="script-path-placeholder.js"></script>
 </body>
 </html>`;

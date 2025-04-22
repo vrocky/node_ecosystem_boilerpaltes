@@ -49,35 +49,15 @@ const ButtonIsolation: React.FC = () => {
   );
 };
 
-// Check if we're in a browser environment
-const isBrowser = typeof window !== 'undefined';
-
-// Safely access import.meta.env with proper type checking
-const getEnvValue = (key: string): boolean => {
-  if (typeof import.meta !== 'undefined' && 
-      typeof import.meta.env !== 'undefined') {
-    return (import.meta.env as any)[key] === true;
-  }
-  return false;
-};
-
-// Detect if we're in a module context
-// For Vite: check the VITE_MODULE_MODE flag
-// For other environments: assume we want to render
-const shouldRender = isBrowser && 
-  !getEnvValue('VITE_MODULE_MODE');
-
-// Render the component if we're not in a module context
-if (shouldRender) {
-  const container = document.getElementById('root');
-  if (container) {
-    const root = createRoot(container);
-    root.render(
-      <React.StrictMode>
-        <ButtonIsolation />
-      </React.StrictMode>
-    );
-  }
+// Render immediately to ensure the component loads
+const container = document.getElementById('root');
+if (container) {
+  const root = createRoot(container);
+  root.render(
+    <React.StrictMode>
+      <ButtonIsolation />
+    </React.StrictMode>
+  );
 }
 
 export default ButtonIsolation;

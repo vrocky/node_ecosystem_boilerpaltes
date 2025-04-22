@@ -3,4 +3,5 @@ export { createIsolationPlugin } from './isolation-plugin.js';
 export { createPagePlugin } from './page-plugin.js';
 export { createTestPlugin } from './test-plugin.js';
 export { ensureMainSiteCssPlugin } from './main-site-css-plugin.js';
+export { createDevServer } from './serve.js';
 export { getRelativePath } from './utils.js';
